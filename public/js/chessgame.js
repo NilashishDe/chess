@@ -1,10 +1,12 @@
 const socket = io();
 const chess = new Chess();
 const boardElement = document.querySelector('.chessboard');
+const messageElement = document.getElementById('message');
 
 let draggedPiece= null;
 let sourceSquare = null;
 let playerRole = null;
+let isGameOver = false;
 
 const renderBoard = () => {
     const board = chess.board();
@@ -24,7 +26,8 @@ const renderBoard = () => {
                 pieceElement.classList.add('piece', square.color==='w'? "white": "black");
                 pieceElement.innerText = getPieceUnicode(square);
                 pieceElement.draggable = playerRole === square.color;
-                
+                pieceElement.draggable = playerRole === square.color && !isGameOver;
+
                 pieceElement.addEventListener('dragstart', (e) => {
                     if(pieceElement.draggable){
                         draggedPiece = pieceElement;
@@ -89,12 +92,18 @@ const getPieceUnicode = (piece) => {
     return pieceUnicode[piece.type] || '';
 }
 
+const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+};
+
 socket.on('playerRole', function(role) {
     playerRole = role;  
     renderBoard();
 });
 
-socket.on('spectatoeRole', function(role) {
+socket.on('spectatorRole', function(role) {
     playerRole = null;  
     renderBoard();
 });
@@ -107,6 +116,37 @@ socket.on('boardState', function(fen) {
 socket.on('move', function(move) {
     chess.move(move); 
     renderBoard();
+});
+
+socket.on('invalidMove', (data) => {
+    messageElement.innerText = `Illegal Move: ${data.move.from}-${data.move.to}`;
+    // Clear the message after 3 seconds
+    setTimeout(() => {
+        messageElement.innerText = '';
+    }, 3000);
+});
+
+socket.on('timerUpdate', (timers) => {
+    whiteTimerEl.innerText = formatTime(timers.w);
+    blackTimerEl.innerText = formatTime(timers.b);
+});
+
+socket.on('gameOver', (data) => {
+    isGameOver = true; // Set the flag to true
+    messageElement.innerText = `Game Over! ${data.reason}. Winner: ${data.winner}`;
+    // Re-render the board to make pieces non-draggable
+    renderBoard();
+});
+
+socket.on('check', (data) => {
+    const checkedPlayer = data.player === 'w' ? 'White' : 'Black';
+    messageElement.innerText = `${checkedPlayer} is in Check!`;
+    // Clear the message after a few seconds, but only if the game hasn't ended
+    setTimeout(() => {
+        if (!isGameOver) {
+            messageElement.innerText = '';
+        }
+    }, 3000);
 });
 
 renderBoard();
