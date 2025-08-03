@@ -8,6 +8,8 @@ const app = express();
 const server = http.createServer(app);
 const io = socket(server);
 
+const PORT = process.env.PORT || 3001;
+
 let players = {};
 let chess = new Chess(); // Use 'let' instead of 'const'
 let timers = {};
@@ -138,6 +140,6 @@ io.on('connection', function (uniquesocket) {
     });
 });
 
-server.listen(4000, function () {
-    console.log('Server is running on port 4000');
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
