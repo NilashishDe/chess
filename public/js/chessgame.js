@@ -8,6 +8,9 @@ let sourceSquare = null;
 let playerRole = null;
 let isGameOver = false;
 
+const whiteTimerEl = document.getElementById('whiteTimer');
+const blackTimerEl = document.getElementById('blackTimer');
+
 const renderBoard = () => {
     const board = chess.board();
     boardElement.innerHTML = '';
@@ -127,8 +130,13 @@ socket.on('invalidMove', (data) => {
 });
 
 socket.on('timerUpdate', (timers) => {
-    whiteTimerEl.innerText = formatTime(timers.w);
-    blackTimerEl.innerText = formatTime(timers.b);
+    if(playerRole==='b'){
+        whiteTimerEl.innerText = formatTime(timers.b);
+        blackTimerEl.innerText = formatTime(timers.w);
+    }else{
+        whiteTimerEl.innerText = formatTime(timers.w);
+        blackTimerEl.innerText = formatTime(timers.b);
+    }
 });
 
 socket.on('gameOver', (data) => {
@@ -150,3 +158,33 @@ socket.on('check', (data) => {
 });
 
 renderBoard();
+document.getElementById('resignBtn').addEventListener('click', () => {
+    if (isGameOver) return;
+    const confirmResign = confirm("Are you sure you want to resign?");
+    if (confirmResign) {
+        socket.emit('resign');
+    }
+});
+
+// Offer Draw button handler
+document.getElementById('drawBtn').addEventListener('click', () => {
+    if (isGameOver) return;
+    socket.emit('offerDraw');
+});
+
+// Optional: handle draw offer from opponent
+socket.on('drawOffered', () => {
+    const accept = confirm("Opponent has offered a draw. Do you accept?");
+    if (accept) {
+        socket.emit('acceptDraw');
+    } else {
+        socket.emit('declineDraw');
+    }
+});
+
+// Optional: handle game end via draw/resignation
+socket.on('gameEnded', (data) => {
+    isGameOver = true;
+    messageElement.innerText = `Game Over! ${data.reason}`;
+    renderBoard();
+});
